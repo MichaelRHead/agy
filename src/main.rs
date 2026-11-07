@@ -50,18 +50,270 @@ pub fn day_of_week(year: i32, month: u32, day: u32) -> u32 {
         .rem_euclid(7)) as u32
 }
 
+/// Computes the Nth occurrence (1-indexed) of `target_dow` (0 = Sun .. 6 = Sat) in a given month.
+pub fn nth_weekday_of_month(year: i32, month: u32, target_dow: u32, n: u32) -> u32 {
+    let first_dow = day_of_week(year, month, 1);
+    let offset = (target_dow + 7 - first_dow) % 7;
+    1 + offset + (n - 1) * 7
+}
+
+/// Computes the last occurrence of `target_dow` in a 31-day month (such as May for Memorial Day).
+pub fn last_weekday_of_31_day_month(year: i32, month: u32, target_dow: u32) -> u32 {
+    let dow_31 = day_of_week(year, month, 31);
+    let offset = (dow_31 + 7 - target_dow) % 7;
+    31 - offset
+}
+
 /// Computes the day of November on which US Thanksgiving falls (the 4th Thursday of November)
 /// for the given year.
 pub fn thanksgiving_day_of_november(year: i32) -> u32 {
-    let nov1_dow = day_of_week(year, 11, 1); // 0 = Sun, 4 = Thu
-    let offset_to_first_thursday = (4 + 7 - nov1_dow) % 7;
-    let first_thursday = 1 + offset_to_first_thursday;
-    first_thursday + 21
+    nth_weekday_of_month(year, 11, 4, 4)
 }
 
-/// Returns a festive Thanksgiving dish recommendation based on the day of the month.
-pub fn dish_of_the_day(day: u32) -> &'static str {
-    const DISHES: &[&str] = &[
+/// Returns the first full day of Hanukkah (25 Kislev) when it falls in December (or late Nov mapped to Dec 1).
+pub fn hanukkah_start_day_in_december(year: i32) -> u32 {
+    match year {
+        2024 => 26,
+        2025 => 15,
+        2026 => 5,
+        2027 => 25,
+        2028 => 13,
+        2029 => 2,
+        2030 => 21,
+        2031 => 10,
+        2032 => 1, // Begins late Nov, celebrated into early December
+        2033 => 17,
+        2034 => 7,
+        2035 => 27,
+        _ => 15,
+    }
+}
+
+/// Metadata and calculations for a month's featured holiday.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct HolidayInfo {
+    pub month_name: &'static str,
+    pub holiday_name: &'static str,
+    pub greeting_prefix: &'static str,
+    pub emoji: &'static str,
+    pub vibe: &'static str,
+    pub start_day: u32,
+    pub duration_days: u32,
+    pub celebration_banner: &'static str,
+    pub post_holiday_note: &'static str,
+}
+
+/// Returns the `HolidayInfo` for a given year and month (1..=12).
+pub fn holiday_for_month(year: i32, month: u32) -> HolidayInfo {
+    match month {
+        1 => HolidayInfo {
+            month_name: "January",
+            holiday_name: "New Year's Day",
+            greeting_prefix: "Happy New Year",
+            emoji: "🎆🥂",
+            vibe: "Fresh starts and sparkling resolutions!",
+            start_day: 1,
+            duration_days: 1,
+            celebration_banner: "🎆🥂 HAPPY NEW YEAR! Wishing you a joyful year ahead! 🥂🎆",
+            post_holiday_note: "The new year is underway — keep those resolutions going strong!",
+        },
+        2 => HolidayInfo {
+            month_name: "February",
+            holiday_name: "Valentine's Day",
+            greeting_prefix: "Happy Valentine's Day",
+            emoji: "💘🍫",
+            vibe: "Love, friendship, and sweet treats in the air!",
+            start_day: 14,
+            duration_days: 1,
+            celebration_banner: "💘🌹 HAPPY VALENTINE'S DAY! Spread the love and share some chocolates! 🌹💘",
+            post_holiday_note: "Discounted chocolate boxes are now in season!",
+        },
+        3 => HolidayInfo {
+            month_name: "March",
+            holiday_name: "St. Patrick's Day",
+            greeting_prefix: "Happy St. Patrick's Day",
+            emoji: "☘️🌈",
+            vibe: "Shamrocks, emerald green, and a bit of luck!",
+            start_day: 17,
+            duration_days: 1,
+            celebration_banner: "☘️🌈 HAPPY ST. PATRICK'S DAY! May the luck of the Irish be with you! 🌈☘️",
+            post_holiday_note: "Spring is right around the corner after St. Paddy's!",
+        },
+        4 => HolidayInfo {
+            month_name: "April",
+            holiday_name: "Earth Day",
+            greeting_prefix: "Happy Earth Day",
+            emoji: "🌍🌱",
+            vibe: "Spring blossoms and appreciation for our planet!",
+            start_day: 22,
+            duration_days: 1,
+            celebration_banner: "🌍🌱 HAPPY EARTH DAY! Plant a tree and enjoy the great outdoors! 🌱🌍",
+            post_holiday_note: "Every day is a great day to care for the planet!",
+        },
+        5 => HolidayInfo {
+            month_name: "May",
+            holiday_name: "Memorial Day",
+            greeting_prefix: "Happy Memorial Day",
+            emoji: "🌺☀️",
+            vibe: "Late spring sunshine, remembrance, and backyard cookouts!",
+            start_day: last_weekday_of_31_day_month(year, 5, 1),
+            duration_days: 1,
+            celebration_banner: "🌺☀️ HAPPY MEMORIAL DAY! Remembering heroes and welcoming summer! ☀️🌺",
+            post_holiday_note: "Unofficial summer season has officially begun!",
+        },
+        6 => HolidayInfo {
+            month_name: "June",
+            holiday_name: "Juneteenth",
+            greeting_prefix: "Happy Juneteenth",
+            emoji: "🌻🎉",
+            vibe: "Long sunny days, freedom celebrations, and community gatherings!",
+            start_day: 19,
+            duration_days: 1,
+            celebration_banner: "🌻🎉 HAPPY JUNETEENTH! Celebrating freedom, heritage, and community! 🎉🌻",
+            post_holiday_note: "Summer solstice sunshine is in full swing!",
+        },
+        7 => HolidayInfo {
+            month_name: "July",
+            holiday_name: "Independence Day",
+            greeting_prefix: "Happy 4th of July",
+            emoji: "🎇🗽",
+            vibe: "Summer fireworks, parades, and starlit picnics!",
+            start_day: 4,
+            duration_days: 1,
+            celebration_banner: "🎇🗽 HAPPY 4TH OF JULY! Enjoy the fireworks and summer barbecue! 🗽🎇",
+            post_holiday_note: "Mid-summer warmth continues after the fireworks!",
+        },
+        8 => HolidayInfo {
+            month_name: "August",
+            holiday_name: "Friendship Day",
+            greeting_prefix: "Happy Friendship Day",
+            emoji: "🏖️🤝",
+            vibe: "Golden late-summer days and celebrating good friends!",
+            start_day: nth_weekday_of_month(year, 8, 0, 1),
+            duration_days: 1,
+            celebration_banner: "🏖️🤝 HAPPY FRIENDSHIP DAY! Reach out to a great friend today! 🤝🏖️",
+            post_holiday_note: "Savoring the final golden weeks of summer!",
+        },
+        9 => HolidayInfo {
+            month_name: "September",
+            holiday_name: "Labor Day",
+            greeting_prefix: "Happy Labor Day",
+            emoji: "🍎🛠️",
+            vibe: "Crisp early-autumn breezes and celebrating hard work!",
+            start_day: nth_weekday_of_month(year, 9, 1, 1),
+            duration_days: 1,
+            celebration_banner: "🍎🛠️ HAPPY LABOR DAY! Take a well-deserved break and relax! 🛠️🍎",
+            post_holiday_note: "Sweater weather and apple orchard season are here!",
+        },
+        10 => HolidayInfo {
+            month_name: "October",
+            holiday_name: "Halloween",
+            greeting_prefix: "Happy Halloween",
+            emoji: "🎃👻",
+            vibe: "Spooky lanterns, rustling leaves, and candy corn!",
+            start_day: 31,
+            duration_days: 1,
+            celebration_banner: "🎃👻 HAPPY HALLOWEEN! Trick or treat — watch out for ghosts! 👻🎃",
+            post_holiday_note: "Enjoy the leftover Halloween candy stash!",
+        },
+        11 => HolidayInfo {
+            month_name: "November",
+            holiday_name: "Thanksgiving",
+            greeting_prefix: "Happy Thanksgiving",
+            emoji: "🍁🍂",
+            vibe: "Cozy autumn vibes detected.",
+            start_day: thanksgiving_day_of_november(year),
+            duration_days: 1,
+            celebration_banner: "🦃🥧 HAPPY THANKSGIVING! Pass the gravy and enjoy the feast! 🥧🦃",
+            post_holiday_note: "prime time for turkey leftover sandwiches!",
+        },
+        12 | _ => HolidayInfo {
+            month_name: "December",
+            holiday_name: "Hanukkah",
+            greeting_prefix: "Happy Hanukkah",
+            emoji: "🕎✨",
+            vibe: "Warm candlelight, spinning dreidels, and the Festival of Lights!",
+            start_day: hanukkah_start_day_in_december(year),
+            duration_days: 8,
+            celebration_banner: "🕎✨ CHAG HANUKKAH SAMEACH! Light the menorah and spin the dreidel! ✨🕎",
+            post_holiday_note: "The warmth of the Festival of Lights carries through winter!",
+        },
+    }
+}
+
+/// Returns a festive holiday dish/treat recommendation for the given month and day.
+pub fn dish_of_the_day_for_month(month: u32, day: u32) -> &'static str {
+    const JAN_DISHES: &[&str] = &[
+        "Sparkling Apple Cider Toast 🥂",
+        "Southern Hoppin' John with Black-Eyed Peas & Collards 🍲",
+        "Glazed New Year's Pretzel Ring 🥨",
+        "Toshikoshi Soba Longevity Noodles 🍜",
+        "Pomegranate & Citrus Winter Salad 🍊",
+    ];
+    const FEB_DISHES: &[&str] = &[
+        "Dark Chocolate-Covered Strawberries 🍓",
+        "Warm Molten Chocolate Lava Cake 🍫",
+        "Raspberry Rose Macarons 🧁",
+        "Heart-Shaped Margherita Ravioli 🍝",
+        "Spiced Hot Cocoa with Whipped Cream ☕",
+    ];
+    const MAR_DISHES: &[&str] = &[
+        "Traditional Irish Soda Bread with Cultured Butter 🍞",
+        "Slow-Braised Corned Beef & Cabbage 🥬",
+        "Savory Shepherd's Pie with Mashed Potato Crust 🥧",
+        "Mint Shamrock Shake 🥤",
+        "Colcannon Mashed Potatoes with Scallions 🥔",
+    ];
+    const APR_DISHES: &[&str] = &[
+        "Spring Pea & Mint Risotto 🌱",
+        "Farm-Fresh Asparagus & Lemon Tart 🍋",
+        "Garden Herb & Heirloom Radish Bruschetta 🥖",
+        "Honey-Lavender Chamomile Iced Tea 🍵",
+        "Wild Berry Rhubarb Crisp 🫐",
+    ];
+    const MAY_DISHES: &[&str] = &[
+        "Backyard Grilled Veggie & Halloumi Skewers 🍢",
+        "Classic Picnic Potato Salad with Fresh Dill 🥔",
+        "Sweet Corn on the Cob with Lime-Chili Butter 🌽",
+        "Fresh Strawberry Shortcake with Whipped Cream 🍰",
+        "Freshly Squeezed Mint Lemonade 🍋",
+    ];
+    const JUN_DISHES: &[&str] = &[
+        "Hibiscus Red Drink with Ginger & Lime 🌺",
+        "Smoky Barbecue Pulled Jackfruit & Slaw Sliders 🍔",
+        "Chilled Watermelon & Feta Salad with Mint 🍉",
+        "Red Velvet Celebration Cupcakes 🧁",
+        "Southern Peach Cobbler with Vanilla Bean Ice Cream 🍑",
+    ];
+    const JUL_DISHES: &[&str] = &[
+        "Red, White & Blue Berry Pavlova 🫐🍓",
+        "Char-Grilled All-American Burgers & Caramelized Onions 🍔",
+        "Firecracker Grilled Corn Salad 🌽",
+        "Homemade Old-Fashioned Vanilla Ice Cream 🍨",
+        "Icy Watermelon Agua Fresca 🍉",
+    ];
+    const AUG_DISHES: &[&str] = &[
+        "Heirloom Tomato, Peach & Burrata Caprese 🍅",
+        "S'mores around the Late-Summer Campfire 🔥",
+        "Blackberry & Lemon Verbena Galette 🥧",
+        "Grilled Zucchini & Pesto Flatbread 🍕",
+        "Chilled Mango Lassi 🥭",
+    ];
+    const SEP_DISHES: &[&str] = &[
+        "Warm Apple Cider Donuts with Cinnamon Sugar 🍩",
+        "Cedar-Plank Roasted Salmon with Maple Glaze 🐟",
+        "Harvest Farro Salad with Roasted Squash & Apples 🍎",
+        "Caramelized Onion & Gruyère Galette 🧀",
+        "Spiced Pear & Ginger Crisp 🍐",
+    ];
+    const OCT_DISHES: &[&str] = &[
+        "Roasted Butternut Squash Soup with Toasted Pepitas 🎃",
+        "Hand-Dipped Caramel Apples with Crushed Nuts 🍏",
+        "Spiced Pumpkin Bread with Maple Glaze 🍞",
+        "Mulled Apple Cider with Star Anise & Cloves ☕",
+        "Monster Eye Chocolate Pretzel Bites 🍫",
+    ];
+    const NOV_DISHES: &[&str] = &[
         "Herb-Roasted Turkey with Crispy Skin 🦃",
         "Homemade Cranberry-Orange Relish 🍒",
         "Creamy Garlic Mashed Potatoes & Rich Pan Gravy 🥔",
@@ -71,7 +323,35 @@ pub fn dish_of_the_day(day: u32) -> &'static str {
         "Green Bean Almondine with Crispy Shallots 🫘",
         "Warm Apple Cider with Cinnamon Sticks 🍎",
     ];
-    DISHES[(day as usize) % DISHES.len()]
+    const DEC_DISHES: &[&str] = &[
+        "Crispy Golden Potato Latkes with Applesauce & Sour Cream 🥔",
+        "Jelly-Filled Sufganiyot Dusted with Powdered Sugar 🍩",
+        "Sweet Noodle Kugel with Cinnamon & Golden Raisins 🍮",
+        "Slow-Braised Holiday Brisket with Roasted Root Vegetables 🥕",
+        "Foil-Wrapped Chocolate Hanukkah Gelt 🪙🍫",
+        "Olive Oil & Citrus Cake with Pistachios 🍊",
+    ];
+
+    let list = match month {
+        1 => JAN_DISHES,
+        2 => FEB_DISHES,
+        3 => MAR_DISHES,
+        4 => APR_DISHES,
+        5 => MAY_DISHES,
+        6 => JUN_DISHES,
+        7 => JUL_DISHES,
+        8 => AUG_DISHES,
+        9 => SEP_DISHES,
+        10 => OCT_DISHES,
+        11 => NOV_DISHES,
+        _ => DEC_DISHES,
+    };
+    list[(day as usize) % list.len()]
+}
+
+/// Returns a festive Thanksgiving dish recommendation based on the day of the month.
+pub fn dish_of_the_day(day: u32) -> &'static str {
+    dish_of_the_day_for_month(11, day)
 }
 
 /// Returns ASCII art of a festive Thanksgiving turkey.
@@ -93,58 +373,124 @@ pub fn ascii_turkey(greeting: &str) -> String {
     )
 }
 
-/// Formats a greeting message for the given target name.
-pub fn greet(name: &str) -> String {
-    let trimmed = name.trim();
-    if trimmed.is_empty() {
-        "Hello, world!".to_string()
-    } else {
-        format!("Hello, {trimmed}!")
+/// Returns ASCII art of a festive Hanukkah Menorah (Chanukiah).
+pub fn ascii_menorah(greeting: &str) -> String {
+    format!(
+        r#"           🕯️
+     🕯️ 🕯️ 🕯️ 🕯️ || 🕯️ 🕯️ 🕯️ 🕯️   ✨  ____________________________________
+     || || || || || || || || ||     /                                    \
+     \  \  \  \  ||  /  /  /  /  __|  {greeting:<34} |
+      \  \  \  \ || /  /  /  /     \____________________________________/
+       '--.____.\||/.____.--'
+                 ||
+                _||_
+               /____\  🕎 Chag Hanukkah Sameach!"#
+    )
+}
+
+/// Returns ASCII art of New Year's fireworks and toast.
+pub fn ascii_new_years(greeting: &str) -> String {
+    format!(
+        r#"      .* *.               🎆  ____________________________________
+    *  \ /  *   .* *.        /                                    \
+   * -- * -- * *  *  *    __|  {greeting:<34} |
+    *  / \  *   '* *'       \____________________________________/
+      '* *'       |
+        |      \~/ \~/
+       _|_      |   |   🥂 Cheers to the New Year!"#
+    )
+}
+
+/// Returns seasonal ASCII art for any month of the year.
+pub fn ascii_seasonal(month: u32, greeting: &str) -> String {
+    match month {
+        11 => ascii_turkey(greeting),
+        12 => ascii_menorah(greeting),
+        1 => ascii_new_years(greeting),
+        _ => {
+            let info = holiday_for_month(2026, month);
+            format!(
+                r#"   .~~~~.
+  /      \  {}  ____________________________________
+ |  ^  ^  |    /                                    \
+ |  \__/  | __|  {greeting:<34} |
+  \      /     \____________________________________/
+   `----'   {}Celebrating {}!"#,
+                info.emoji, info.emoji, info.holiday_name
+            )
+        }
     }
 }
 
-/// Generates a seasonal November & Thanksgiving status block if the date is in November
-/// (or when explicitly requested via `--feast`).
-pub fn seasonal_message(date: SimpleDate, force_feast: bool) -> Option<String> {
-    if date.month != 11 && !force_feast {
-        return None;
-    }
+/// Formats a seasonal greeting message for the given target name and month (1..=12).
+pub fn seasonal_greet(name: &str, month: u32) -> String {
+    let trimmed = name.trim();
+    let target = if trimmed.is_empty() { "world" } else { trimmed };
+    let info = holiday_for_month(2026, month);
+    format!("{}, {target}!", info.greeting_prefix)
+}
 
-    let tday = thanksgiving_day_of_november(date.year);
+/// Formats a greeting message for the given target name using the current month's seasonal greeting.
+pub fn greet(name: &str) -> String {
+    seasonal_greet(name, current_date().month)
+}
+
+/// Generates a seasonal holiday status block for the given date's month.
+pub fn seasonal_message(date: SimpleDate, _force_feast: bool) -> Option<String> {
+    let info = holiday_for_month(date.year, date.month);
     let mut lines = Vec::new();
 
-    if date.month == 11 {
-        lines.push(format!(
-            "🍁 Happy November ({:04}-{:02}-{:02})! Cozy autumn vibes detected. 🍂",
-            date.year, date.month, date.day
-        ));
-        if date.day < tday {
-            let days_left = tday - date.day;
-            let day_word = if days_left == 1 { "day" } else { "days" };
+    lines.push(format!(
+        "{} Happy {} ({:04}-{:02}-{:02})! {} {}",
+        info.emoji, info.month_name, date.year, date.month, date.day, info.vibe, info.emoji
+    ));
+
+    let end_day = info.start_day + info.duration_days - 1;
+
+    if date.day < info.start_day {
+        let days_left = info.start_day - date.day;
+        let day_word = if days_left == 1 { "day" } else { "days" };
+        let short_month = &info.month_name[..3];
+        if date.month == 11 {
             lines.push(format!(
-                "🦃 Countdown: {days_left} {day_word} until Thanksgiving (Nov {tday}, {})!",
-                date.year
+                "🦃 Countdown: {days_left} {day_word} until {} ({short_month} {}, {})!",
+                info.holiday_name, info.start_day, date.year
             ));
-        } else if date.day == tday {
-            lines.push(
-                "🦃🥧 HAPPY THANKSGIVING! Pass the gravy and enjoy the feast! 🥧🦃".to_string(),
-            );
         } else {
-            let days_since = date.day - tday;
             lines.push(format!(
-                "🥪 Thanksgiving was {days_since} day(s) ago — prime time for turkey leftover sandwiches!"
+                "{} Countdown: {days_left} {day_word} until {} ({short_month} {}, {})!",
+                info.emoji, info.holiday_name, info.start_day, date.year
             ));
         }
+    } else if date.day <= end_day {
+        if info.duration_days > 1 {
+            let night_num = date.day - info.start_day + 1;
+            lines.push(format!(
+                "{} (Day {night_num} of {}!)",
+                info.celebration_banner, info.duration_days
+            ));
+        } else {
+            lines.push(info.celebration_banner.to_string());
+        }
     } else {
-        lines.push(format!(
-            "🍂 Off-season Thanksgiving preview! In {}, Thanksgiving falls on Nov {tday}.",
-            date.year
-        ));
+        let days_since = date.day - end_day;
+        if date.month == 11 {
+            lines.push(format!(
+                "🥪 Thanksgiving was {days_since} day(s) ago — {}",
+                info.post_holiday_note
+            ));
+        } else {
+            lines.push(format!(
+                "{} {} was {days_since} day(s) ago — {}",
+                info.emoji, info.holiday_name, info.post_holiday_note
+            ));
+        }
     }
 
     lines.push(format!(
-        "🍽️  Featured Feast Dish: {}",
-        dish_of_the_day(date.day)
+        "🍽️  Featured {} Treat: {}",
+        info.holiday_name,
+        dish_of_the_day_for_month(date.month, date.day)
     ));
 
     Some(lines.join("\n"))
@@ -161,22 +507,24 @@ fn current_date() -> SimpleDate {
 fn print_usage(program: &str) {
     println!("Usage: {program} [OPTIONS] [NAME...]");
     println!();
-    println!("Prints a friendly greeting with special November & Thanksgiving festivities!");
+    println!("Prints a seasonal holiday greeting tailored to every month of the year!");
     println!();
     println!("Options:");
     println!("  -h, --help              Show this help message");
-    println!("  -t, --turkey            Display an ASCII art Thanksgiving turkey");
-    println!("  -f, --feast             Show the Thanksgiving countdown & featured dish (even outside November)");
-    println!("      --date YYYY-MM-DD   Override the date (e.g. --date 2026-11-26)");
+    println!("  -t, --turkey            Force the ASCII art Thanksgiving turkey");
+    println!("  -f, --feast             Show the holiday countdown & featured dish");
+    println!("  -m, --month MONTH       Override the month (1-12, e.g. --month 12 for Hanukkah)");
+    println!("      --date YYYY-MM-DD   Override the full date (e.g. --date 2026-12-05)");
 }
 
 fn main() {
     let mut args = env::args();
     let program = args.next().unwrap_or_else(|| "hello".to_string());
 
-    let mut show_turkey = false;
+    let mut force_turkey = false;
     let mut force_feast = false;
     let mut custom_date: Option<SimpleDate> = None;
+    let mut custom_month: Option<u32> = None;
     let mut name_parts: Vec<String> = Vec::new();
 
     while let Some(arg) = args.next() {
@@ -185,8 +533,17 @@ fn main() {
                 print_usage(&program);
                 return;
             }
-            "-t" | "--turkey" => show_turkey = true,
+            "-t" | "--turkey" => force_turkey = true,
             "-f" | "--feast" => force_feast = true,
+            "-m" | "--month" => {
+                if let Some(val) = args.next() {
+                    if let Ok(m) = val.parse::<u32>() {
+                        if (1..=12).contains(&m) {
+                            custom_month = Some(m);
+                        }
+                    }
+                }
+            }
             "--date" => {
                 if let Some(val) = args.next() {
                     custom_date = parse_date(&val);
@@ -202,14 +559,18 @@ fn main() {
         name_parts.join(" ")
     };
 
-    let greeting = greet(&name);
-    let today = custom_date.unwrap_or_else(current_date);
+    let mut today = custom_date.unwrap_or_else(current_date);
+    if let Some(m) = custom_month {
+        today.month = m;
+        today.day = 1;
+    }
 
-    // Show the ASCII turkey if requested OR automatically during November!
-    if show_turkey || today.month == 11 {
+    let greeting = seasonal_greet(&name, today.month);
+
+    if force_turkey {
         println!("{}", ascii_turkey(&greeting));
     } else {
-        println!("{greeting}");
+        println!("{}", ascii_seasonal(today.month, &greeting));
     }
 
     if let Some(seasonal) = seasonal_message(today, force_feast) {
@@ -222,18 +583,46 @@ mod tests {
     use super::*;
 
     #[test]
-    fn greets_default_world() {
-        assert_eq!(greet("world"), "Hello, world!");
+    fn seasonal_greets_thanksgiving_in_november() {
+        assert_eq!(
+            seasonal_greet("world", 11),
+            "Happy Thanksgiving, world!"
+        );
     }
 
     #[test]
-    fn greets_custom_name() {
-        assert_eq!(greet("Rust"), "Hello, Rust!");
+    fn seasonal_greets_hanukkah_in_december() {
+        assert_eq!(
+            seasonal_greet("Hannah", 12),
+            "Happy Hanukkah, Hannah!"
+        );
+    }
+
+    #[test]
+    fn seasonal_greets_new_year_in_january() {
+        assert_eq!(
+            seasonal_greet("Rust", 1),
+            "Happy New Year, Rust!"
+        );
     }
 
     #[test]
     fn falls_back_on_empty_input() {
-        assert_eq!(greet("   "), "Hello, world!");
+        assert_eq!(
+            seasonal_greet("   ", 11),
+            "Happy Thanksgiving, world!"
+        );
+    }
+
+    #[test]
+    fn supports_all_twelve_months() {
+        for month in 1..=12 {
+            let info = holiday_for_month(2026, month);
+            assert!(!info.holiday_name.is_empty());
+            let greeting = seasonal_greet("friend", month);
+            assert!(greeting.starts_with("Happy "));
+            assert!(greeting.ends_with(", friend!"));
+        }
     }
 
     #[test]
@@ -262,6 +651,37 @@ mod tests {
         };
         let msg = seasonal_message(tday, false).expect("Should produce Thanksgiving message");
         assert!(msg.contains("HAPPY THANKSGIVING!"));
+    }
+
+    #[test]
+    fn december_hanukkah_countdown_and_celebration() {
+        let dec1 = SimpleDate {
+            year: 2026,
+            month: 12,
+            day: 1,
+        };
+        let msg_countdown = seasonal_message(dec1, false).expect("Should produce December message");
+        assert!(msg_countdown.contains("4 days until Hanukkah (Dec 5, 2026)"));
+
+        let dec6 = SimpleDate {
+            year: 2026,
+            month: 12,
+            day: 6,
+        };
+        let msg_celebrate = seasonal_message(dec6, false).expect("Should produce Hanukkah message");
+        assert!(msg_celebrate.contains("CHAG HANUKKAH SAMEACH!"));
+        assert!(msg_celebrate.contains("Day 2 of 8!"));
+    }
+
+    #[test]
+    fn january_new_years_day_celebrates() {
+        let jan1 = SimpleDate {
+            year: 2027,
+            month: 1,
+            day: 1,
+        };
+        let msg = seasonal_message(jan1, false).expect("Should produce January message");
+        assert!(msg.contains("HAPPY NEW YEAR!"));
     }
 }
 
