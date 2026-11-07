@@ -2,6 +2,13 @@ use std::env;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::{SystemTime, UNIX_EPOCH};
 
+// Embed the external quotes and constants directly into the binary at compile time
+// with zero runtime file I/O.
+include!("quotes.rs");
+
+/// Raw embedded source of `quotes.rs` baked into the binary's read-only data segment.
+pub const EMBEDDED_QUOTES_RAW: &str = include_str!("quotes.rs");
+
 /// Represents a simple civil calendar date.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct SimpleDate {
@@ -13,7 +20,7 @@ pub struct SimpleDate {
 /// Converts a Unix timestamp (seconds since 1970-01-01 UTC) to a `SimpleDate`
 /// using Howard Hinnant's civil-from-days algorithm.
 pub fn date_from_unix_secs(secs: u64) -> SimpleDate {
-    let z = (secs / 86_400) as i64 + 719_468;
+    let z = (secs / SECS_PER_DAY) as i64 + CIVIL_EPOCH_OFFSET_DAYS;
     let era = if z >= 0 { z } else { z - 146_096 } / 146_097;
     let doe = (z - era * 146_097) as u32;
     let yoe = (doe - doe / 1460 + doe / 36524 - doe / 146_096) / 365;
@@ -45,9 +52,8 @@ pub fn parse_date(input: &str) -> Option<SimpleDate> {
 /// Returns the day of the week (0 = Sunday, 1 = Monday, ..., 4 = Thursday, ..., 6 = Saturday)
 /// using Sakamoto's algorithm.
 pub fn day_of_week(year: i32, month: u32, day: u32) -> u32 {
-    let t = [0, 3, 2, 5, 0, 3, 5, 1, 4, 6, 2, 4];
     let y = if month < 3 { year - 1 } else { year };
-    ((y + y / 4 - y / 100 + y / 400 + t[(month - 1) as usize] + day as i32)
+    ((y + y / 4 - y / 100 + y / 400 + SAKAMOTO_MONTH_OFFSETS[(month - 1) as usize] + day as i32)
         .rem_euclid(7)) as u32
 }
 
@@ -73,131 +79,11 @@ pub fn thanksgiving_day_of_november(year: i32) -> u32 {
 
 /// Returns the first full day of Hanukkah (25 Kislev) when it falls in December (or late Nov mapped to Dec 1).
 pub fn hanukkah_start_day_in_december(year: i32) -> u32 {
-    match year {
-        2024 => 26,
-        2025 => 15,
-        2026 => 5,
-        2027 => 25,
-        2028 => 13,
-        2029 => 2,
-        2030 => 21,
-        2031 => 10,
-        2032 => 1, // Begins late Nov, celebrated into early December
-        2033 => 17,
-        2034 => 7,
-        2035 => 27,
-        _ => 15,
-    }
+    HANUKKAH_START_DAYS
+        .iter()
+        .find_map(|&(y, day)| if y == year { Some(day) } else { None })
+        .unwrap_or(DEFAULT_HANUKKAH_START_DAY)
 }
-
-/// Specialized greeting templates for each month's holiday (`{name}` is replaced with the recipient).
-const JAN_GREETINGS: &[&str] = &[
-    "Happy New Year, {name}!",
-    "Cheers to a bright and joyful New Year, {name}!",
-    "Out with the old, in with the new — Happy New Year, {name}!",
-    "Raise a glass to fresh beginnings, {name}!",
-    "Wishing you 365 days of adventure and success, {name}!",
-    "Sparkles, confetti, and New Year wishes to you, {name}!",
-];
-
-const FEB_GREETINGS: &[&str] = &[
-    "Happy Valentine's Day, {name}!",
-    "Sending you sweet Valentine's wishes and chocolates, {name}!",
-    "Roses are red, violets are blue — Happy Valentine's Day, {name}!",
-    "You're sweeter than a box of truffles, {name}!",
-    "Spreading love, kindness, and Valentine cheer to you, {name}!",
-    "Cupid called — have a wonderful Valentine's Day, {name}!",
-];
-
-const MAR_GREETINGS: &[&str] = &[
-    "Happy St. Patrick's Day, {name}!",
-    "May the luck of the Irish be with you today, {name}!",
-    "Top o' the morning and Happy St. Paddy's Day, {name}!",
-    "Wishing you four-leaf clovers and a pot of gold, {name}!",
-    "Sláinte and shamrock cheers to you, {name}!",
-    "May your pockets be heavy and your heart be light, {name}!",
-];
-
-const APR_GREETINGS: &[&str] = &[
-    "Happy Earth Day, {name}!",
-    "Keep calm and love our planet — Happy Earth Day, {name}!",
-    "Wishing you blooming spring skies and green trails, {name}!",
-    "Let's nurture nature together this Earth Day, {name}!",
-    "Every day is Earth Day when you're around, {name}!",
-    "Plant a seed and watch the spring blossoms grow, {name}!",
-];
-
-const MAY_GREETINGS: &[&str] = &[
-    "Happy Memorial Day, {name}!",
-    "Honoring heroes and welcoming warm sunshine, {name}!",
-    "Wishing you a peaceful and reflective Memorial Day, {name}!",
-    "Fire up the grill and enjoy the Memorial Day breeze, {name}!",
-    "Here's to remembrance, gratitude, and bright May skies, {name}!",
-    "Saluting those who served — have a meaningful Memorial Day, {name}!",
-];
-
-const JUN_GREETINGS: &[&str] = &[
-    "Happy Juneteenth, {name}!",
-    "Celebrating freedom, community, and joy with you, {name}!",
-    "Wishing you a vibrant and inspiring Juneteenth, {name}!",
-    "Honor the past and celebrate the future — Happy Juneteenth, {name}!",
-    "Lift every voice — warm Juneteenth greetings to you, {name}!",
-    "Sunshine, Jubilee, and Juneteenth blessings to you, {name}!",
-];
-
-const JUL_GREETINGS: &[&str] = &[
-    "Happy 4th of July, {name}!",
-    "Sparklers, fireworks, and summer fun to you, {name}!",
-    "Have a star-spangled Independence Day, {name}!",
-    "Cue the fireworks — Happy Fourth of July, {name}!",
-    "Wishing you backyard barbecues and dazzling night skies, {name}!",
-    "Red, white, and booming — enjoy the 4th of July, {name}!",
-];
-
-const AUG_GREETINGS: &[&str] = &[
-    "Happy Friendship Day, {name}!",
-    "Cheers to great friends and golden summer days, {name}!",
-    "Life is better with friends like you — Happy Friendship Day, {name}!",
-    "Sending a high-five and warm August sunshine to you, {name}!",
-    "Here's to laughter, loyalty, and lifelong friendship, {name}!",
-    "Thankful for your friendship today and every day, {name}!",
-];
-
-const SEP_GREETINGS: &[&str] = &[
-    "Happy Labor Day, {name}!",
-    "Kick back and relax — you've earned this Labor Day break, {name}!",
-    "Cheers to hard work and a well-deserved rest, {name}!",
-    "Wishing you crisp autumn breezes and a restful Labor Day, {name}!",
-    "Put your feet up and enjoy the holiday, {name}!",
-    "Here's to the makers, builders, and dreamers — Happy Labor Day, {name}!",
-];
-
-const OCT_GREETINGS: &[&str] = &[
-    "Happy Halloween, {name}!",
-    "Trick or treat — hope your Halloween is spooky and sweet, {name}!",
-    "Boo! Wishing you a fang-tastic Halloween, {name}!",
-    "Double, double, toil and trouble — Happy Halloween, {name}!",
-    "Light the jack-o'-lantern and pass the candy corn, {name}!",
-    "Have a gourd-geous and delightfully spooky Halloween, {name}!",
-];
-
-const NOV_GREETINGS: &[&str] = &[
-    "Happy Thanksgiving, {name}!",
-    "Gobble gobble, {name} — Happy Turkey Day!",
-    "Warm autumn wishes and a thankful heart to you, {name}!",
-    "Pass the stuffing and cranberry sauce, {name}!",
-    "Feast mode activated — Happy Thanksgiving, {name}!",
-    "Wishing you a harvest of gratitude and pumpkin pie, {name}!",
-];
-
-const DEC_GREETINGS: &[&str] = &[
-    "Happy Hanukkah, {name}!",
-    "Chag Hanukkah Sameach, {name}!",
-    "Wishing you eight nights of light, warmth, and joy, {name}!",
-    "Spin the dreidel and pass the crispy latkes, {name}!",
-    "Happy Festival of Lights, {name}!",
-    "May your menorah shine bright this Hanukkah, {name}!",
-];
 
 /// Metadata and calculations for a month's featured holiday.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -214,261 +100,44 @@ pub struct HolidayInfo {
     pub post_holiday_note: &'static str,
 }
 
-/// Returns the `HolidayInfo` for a given year and month (1..=12).
+/// Returns the `HolidayInfo` for a given year and month (1..=12) using the embedded `MONTHLY_HOLIDAY_DATA`.
 pub fn holiday_for_month(year: i32, month: u32) -> HolidayInfo {
-    match month {
-        1 => HolidayInfo {
-            month_name: "January",
-            holiday_name: "New Year's Day",
-            greeting_prefix: "Happy New Year",
-            greetings: JAN_GREETINGS,
-            emoji: "🎆🥂",
-            vibe: "Fresh starts and sparkling resolutions!",
-            start_day: 1,
-            duration_days: 1,
-            celebration_banner: "🎆🥂 HAPPY NEW YEAR! Wishing you a joyful year ahead! 🥂🎆",
-            post_holiday_note: "The new year is underway — keep those resolutions going strong!",
-        },
-        2 => HolidayInfo {
-            month_name: "February",
-            holiday_name: "Valentine's Day",
-            greeting_prefix: "Happy Valentine's Day",
-            greetings: FEB_GREETINGS,
-            emoji: "💘🍫",
-            vibe: "Love, friendship, and sweet treats in the air!",
-            start_day: 14,
-            duration_days: 1,
-            celebration_banner: "💘🌹 HAPPY VALENTINE'S DAY! Spread the love and share some chocolates! 🌹💘",
-            post_holiday_note: "Discounted chocolate boxes are now in season!",
-        },
-        3 => HolidayInfo {
-            month_name: "March",
-            holiday_name: "St. Patrick's Day",
-            greeting_prefix: "Happy St. Patrick's Day",
-            greetings: MAR_GREETINGS,
-            emoji: "☘️🌈",
-            vibe: "Shamrocks, emerald green, and a bit of luck!",
-            start_day: 17,
-            duration_days: 1,
-            celebration_banner: "☘️🌈 HAPPY ST. PATRICK'S DAY! May the luck of the Irish be with you! 🌈☘️",
-            post_holiday_note: "Spring is right around the corner after St. Paddy's!",
-        },
-        4 => HolidayInfo {
-            month_name: "April",
-            holiday_name: "Earth Day",
-            greeting_prefix: "Happy Earth Day",
-            greetings: APR_GREETINGS,
-            emoji: "🌍🌱",
-            vibe: "Spring blossoms and appreciation for our planet!",
-            start_day: 22,
-            duration_days: 1,
-            celebration_banner: "🌍🌱 HAPPY EARTH DAY! Plant a tree and enjoy the great outdoors! 🌱🌍",
-            post_holiday_note: "Every day is a great day to care for the planet!",
-        },
-        5 => HolidayInfo {
-            month_name: "May",
-            holiday_name: "Memorial Day",
-            greeting_prefix: "Happy Memorial Day",
-            greetings: MAY_GREETINGS,
-            emoji: "🌺☀️",
-            vibe: "Late spring sunshine, remembrance, and backyard cookouts!",
-            start_day: last_weekday_of_31_day_month(year, 5, 1),
-            duration_days: 1,
-            celebration_banner: "🌺☀️ HAPPY MEMORIAL DAY! Remembering heroes and welcoming summer! ☀️🌺",
-            post_holiday_note: "Unofficial summer season has officially begun!",
-        },
-        6 => HolidayInfo {
-            month_name: "June",
-            holiday_name: "Juneteenth",
-            greeting_prefix: "Happy Juneteenth",
-            greetings: JUN_GREETINGS,
-            emoji: "🌻🎉",
-            vibe: "Long sunny days, freedom celebrations, and community gatherings!",
-            start_day: 19,
-            duration_days: 1,
-            celebration_banner: "🌻🎉 HAPPY JUNETEENTH! Celebrating freedom, heritage, and community! 🎉🌻",
-            post_holiday_note: "Summer solstice sunshine is in full swing!",
-        },
-        7 => HolidayInfo {
-            month_name: "July",
-            holiday_name: "Independence Day",
-            greeting_prefix: "Happy 4th of July",
-            greetings: JUL_GREETINGS,
-            emoji: "🎇🗽",
-            vibe: "Summer fireworks, parades, and starlit picnics!",
-            start_day: 4,
-            duration_days: 1,
-            celebration_banner: "🎇🗽 HAPPY 4TH OF JULY! Enjoy the fireworks and summer barbecue! 🗽🎇",
-            post_holiday_note: "Mid-summer warmth continues after the fireworks!",
-        },
-        8 => HolidayInfo {
-            month_name: "August",
-            holiday_name: "Friendship Day",
-            greeting_prefix: "Happy Friendship Day",
-            greetings: AUG_GREETINGS,
-            emoji: "🏖️🤝",
-            vibe: "Golden late-summer days and celebrating good friends!",
-            start_day: nth_weekday_of_month(year, 8, 0, 1),
-            duration_days: 1,
-            celebration_banner: "🏖️🤝 HAPPY FRIENDSHIP DAY! Reach out to a great friend today! 🤝🏖️",
-            post_holiday_note: "Savoring the final golden weeks of summer!",
-        },
-        9 => HolidayInfo {
-            month_name: "September",
-            holiday_name: "Labor Day",
-            greeting_prefix: "Happy Labor Day",
-            greetings: SEP_GREETINGS,
-            emoji: "🍎🛠️",
-            vibe: "Crisp early-autumn breezes and celebrating hard work!",
-            start_day: nth_weekday_of_month(year, 9, 1, 1),
-            duration_days: 1,
-            celebration_banner: "🍎🛠️ HAPPY LABOR DAY! Take a well-deserved break and relax! 🛠️🍎",
-            post_holiday_note: "Sweater weather and apple orchard season are here!",
-        },
-        10 => HolidayInfo {
-            month_name: "October",
-            holiday_name: "Halloween",
-            greeting_prefix: "Happy Halloween",
-            greetings: OCT_GREETINGS,
-            emoji: "🎃👻",
-            vibe: "Spooky lanterns, rustling leaves, and candy corn!",
-            start_day: 31,
-            duration_days: 1,
-            celebration_banner: "🎃👻 HAPPY HALLOWEEN! Trick or treat — watch out for ghosts! 👻🎃",
-            post_holiday_note: "Enjoy the leftover Halloween candy stash!",
-        },
-        11 => HolidayInfo {
-            month_name: "November",
-            holiday_name: "Thanksgiving",
-            greeting_prefix: "Happy Thanksgiving",
-            greetings: NOV_GREETINGS,
-            emoji: "🍁🍂",
-            vibe: "Cozy autumn vibes detected.",
-            start_day: thanksgiving_day_of_november(year),
-            duration_days: 1,
-            celebration_banner: "🦃🥧 HAPPY THANKSGIVING! Pass the gravy and enjoy the feast! 🥧🦃",
-            post_holiday_note: "prime time for turkey leftover sandwiches!",
-        },
-        12 | _ => HolidayInfo {
-            month_name: "December",
-            holiday_name: "Hanukkah",
-            greeting_prefix: "Happy Hanukkah",
-            greetings: DEC_GREETINGS,
-            emoji: "🕎✨",
-            vibe: "Warm candlelight, spinning dreidels, and the Festival of Lights!",
-            start_day: hanukkah_start_day_in_december(year),
-            duration_days: 8,
-            celebration_banner: "🕎✨ CHAG HANUKKAH SAMEACH! Light the menorah and spin the dreidel! ✨🕎",
-            post_holiday_note: "The warmth of the Festival of Lights carries through winter!",
-        },
+    let idx = if (1..=12).contains(&month) {
+        (month - 1) as usize
+    } else {
+        11
+    };
+    let data = MONTHLY_HOLIDAY_DATA[idx];
+    let start_day = data.fixed_start_day.unwrap_or_else(|| match month {
+        5 => last_weekday_of_31_day_month(year, 5, 1),
+        8 => nth_weekday_of_month(year, 8, 0, 1),
+        9 => nth_weekday_of_month(year, 9, 1, 1),
+        11 => thanksgiving_day_of_november(year),
+        _ => hanukkah_start_day_in_december(year),
+    });
+
+    HolidayInfo {
+        month_name: data.month_name,
+        holiday_name: data.holiday_name,
+        greeting_prefix: data.greeting_prefix,
+        greetings: data.greetings,
+        emoji: data.emoji,
+        vibe: data.vibe,
+        start_day,
+        duration_days: data.duration_days,
+        celebration_banner: data.celebration_banner,
+        post_holiday_note: data.post_holiday_note,
     }
 }
 
 /// Returns a festive holiday dish/treat recommendation for the given month and day.
 pub fn dish_of_the_day_for_month(month: u32, day: u32) -> &'static str {
-    const JAN_DISHES: &[&str] = &[
-        "Sparkling Apple Cider Toast 🥂",
-        "Southern Hoppin' John with Black-Eyed Peas & Collards 🍲",
-        "Glazed New Year's Pretzel Ring 🥨",
-        "Toshikoshi Soba Longevity Noodles 🍜",
-        "Pomegranate & Citrus Winter Salad 🍊",
-    ];
-    const FEB_DISHES: &[&str] = &[
-        "Dark Chocolate-Covered Strawberries 🍓",
-        "Warm Molten Chocolate Lava Cake 🍫",
-        "Raspberry Rose Macarons 🧁",
-        "Heart-Shaped Margherita Ravioli 🍝",
-        "Spiced Hot Cocoa with Whipped Cream ☕",
-    ];
-    const MAR_DISHES: &[&str] = &[
-        "Traditional Irish Soda Bread with Cultured Butter 🍞",
-        "Slow-Braised Corned Beef & Cabbage 🥬",
-        "Savory Shepherd's Pie with Mashed Potato Crust 🥧",
-        "Mint Shamrock Shake 🥤",
-        "Colcannon Mashed Potatoes with Scallions 🥔",
-    ];
-    const APR_DISHES: &[&str] = &[
-        "Spring Pea & Mint Risotto 🌱",
-        "Farm-Fresh Asparagus & Lemon Tart 🍋",
-        "Garden Herb & Heirloom Radish Bruschetta 🥖",
-        "Honey-Lavender Chamomile Iced Tea 🍵",
-        "Wild Berry Rhubarb Crisp 🫐",
-    ];
-    const MAY_DISHES: &[&str] = &[
-        "Backyard Grilled Veggie & Halloumi Skewers 🍢",
-        "Classic Picnic Potato Salad with Fresh Dill 🥔",
-        "Sweet Corn on the Cob with Lime-Chili Butter 🌽",
-        "Fresh Strawberry Shortcake with Whipped Cream 🍰",
-        "Freshly Squeezed Mint Lemonade 🍋",
-    ];
-    const JUN_DISHES: &[&str] = &[
-        "Hibiscus Red Drink with Ginger & Lime 🌺",
-        "Smoky Barbecue Pulled Jackfruit & Slaw Sliders 🍔",
-        "Chilled Watermelon & Feta Salad with Mint 🍉",
-        "Red Velvet Celebration Cupcakes 🧁",
-        "Southern Peach Cobbler with Vanilla Bean Ice Cream 🍑",
-    ];
-    const JUL_DISHES: &[&str] = &[
-        "Red, White & Blue Berry Pavlova 🫐🍓",
-        "Char-Grilled All-American Burgers & Caramelized Onions 🍔",
-        "Firecracker Grilled Corn Salad 🌽",
-        "Homemade Old-Fashioned Vanilla Ice Cream 🍨",
-        "Icy Watermelon Agua Fresca 🍉",
-    ];
-    const AUG_DISHES: &[&str] = &[
-        "Heirloom Tomato, Peach & Burrata Caprese 🍅",
-        "S'mores around the Late-Summer Campfire 🔥",
-        "Blackberry & Lemon Verbena Galette 🥧",
-        "Grilled Zucchini & Pesto Flatbread 🍕",
-        "Chilled Mango Lassi 🥭",
-    ];
-    const SEP_DISHES: &[&str] = &[
-        "Warm Apple Cider Donuts with Cinnamon Sugar 🍩",
-        "Cedar-Plank Roasted Salmon with Maple Glaze 🐟",
-        "Harvest Farro Salad with Roasted Squash & Apples 🍎",
-        "Caramelized Onion & Gruyère Galette 🧀",
-        "Spiced Pear & Ginger Crisp 🍐",
-    ];
-    const OCT_DISHES: &[&str] = &[
-        "Roasted Butternut Squash Soup with Toasted Pepitas 🎃",
-        "Hand-Dipped Caramel Apples with Crushed Nuts 🍏",
-        "Spiced Pumpkin Bread with Maple Glaze 🍞",
-        "Mulled Apple Cider with Star Anise & Cloves ☕",
-        "Monster Eye Chocolate Pretzel Bites 🍫",
-    ];
-    const NOV_DISHES: &[&str] = &[
-        "Herb-Roasted Turkey with Crispy Skin 🦃",
-        "Homemade Cranberry-Orange Relish 🍒",
-        "Creamy Garlic Mashed Potatoes & Rich Pan Gravy 🥔",
-        "Toasted Pecan & Sourdough Sage Stuffing 🍞",
-        "Brown-Butter Sweet Potato Casserole with Toasted Marshmallows 🍠",
-        "Classic Spiced Pumpkin Pie with Whipped Cream 🥧",
-        "Green Bean Almondine with Crispy Shallots 🫘",
-        "Warm Apple Cider with Cinnamon Sticks 🍎",
-    ];
-    const DEC_DISHES: &[&str] = &[
-        "Crispy Golden Potato Latkes with Applesauce & Sour Cream 🥔",
-        "Jelly-Filled Sufganiyot Dusted with Powdered Sugar 🍩",
-        "Sweet Noodle Kugel with Cinnamon & Golden Raisins 🍮",
-        "Slow-Braised Holiday Brisket with Roasted Root Vegetables 🥕",
-        "Foil-Wrapped Chocolate Hanukkah Gelt 🪙🍫",
-        "Olive Oil & Citrus Cake with Pistachios 🍊",
-    ];
-
-    let list = match month {
-        1 => JAN_DISHES,
-        2 => FEB_DISHES,
-        3 => MAR_DISHES,
-        4 => APR_DISHES,
-        5 => MAY_DISHES,
-        6 => JUN_DISHES,
-        7 => JUL_DISHES,
-        8 => AUG_DISHES,
-        9 => SEP_DISHES,
-        10 => OCT_DISHES,
-        11 => NOV_DISHES,
-        _ => DEC_DISHES,
+    let idx = if (1..=12).contains(&month) {
+        (month - 1) as usize
+    } else {
+        11
     };
+    let list = MONTHLY_DISHES[idx];
     list[(day as usize) % list.len()]
 }
 
@@ -579,9 +248,9 @@ pub fn random_index(len: usize) -> usize {
     let mut z = nanos
         .wrapping_add(pid.rotate_left(17))
         .wrapping_add(stack_addr.rotate_right(11))
-        .wrapping_add(seq.wrapping_mul(0x9E37_79B9_7F4A_7C15));
-    z = (z ^ (z >> 30)).wrapping_mul(0xBF58_476D_1CE4_E5B9);
-    z = (z ^ (z >> 27)).wrapping_mul(0x94D0_49BB_1331_11EB);
+        .wrapping_add(seq.wrapping_mul(SPLITMIX_GAMMA));
+    z = (z ^ (z >> 30)).wrapping_mul(SPLITMIX_MUL1);
+    z = (z ^ (z >> 27)).wrapping_mul(SPLITMIX_MUL2);
     z = z ^ (z >> 31);
     (z as usize) % len
 }
@@ -758,6 +427,13 @@ fn main() {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn embedded_quotes_file_is_baked_into_binary() {
+        assert!(EMBEDDED_QUOTES_RAW.contains("MONTHLY_HOLIDAY_DATA"));
+        assert!(EMBEDDED_QUOTES_RAW.contains("NOV_GREETINGS"));
+        assert_eq!(MONTHLY_HOLIDAY_DATA.len(), 12);
+    }
 
     #[test]
     fn seasonal_greets_thanksgiving_in_november() {

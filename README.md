@@ -59,5 +59,7 @@ cargo test
 ## Project Structure
 
 - `Cargo.toml` — Package manifest configuring the `hello` binary crate (Rust 2024 edition).
+- `src/quotes.rs` — External quotes, holiday metadata (`MONTHLY_HOLIDAY_DATA`), specialized greeting pools (`JAN_GREETINGS`..`DEC_GREETINGS`), monthly dishes (`MONTHLY_DISHES`), and calendar/PRNG constants embedded directly into the binary at compile time via `include!("quotes.rs")` and `include_str!("quotes.rs")` with zero runtime file I/O.
 - `src/main.rs` — CLI entrypoint, `seasonal_greet()`, `greet()`, `holiday_for_month()`, pure-Rust calendar/weekday/floating-holiday calculations, ASCII art generators (`ascii_turkey`, `ascii_menorah`, `ascii_new_years`, `ascii_seasonal`), and unit tests.
 - `.gitignore` — Excludes Cargo's `/target` build directory from version control.
+
