@@ -1,4 +1,5 @@
 use std::env;
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 /// Represents a simple civil calendar date.
@@ -89,12 +90,122 @@ pub fn hanukkah_start_day_in_december(year: i32) -> u32 {
     }
 }
 
+/// Specialized greeting templates for each month's holiday (`{name}` is replaced with the recipient).
+const JAN_GREETINGS: &[&str] = &[
+    "Happy New Year, {name}!",
+    "Cheers to a bright and joyful New Year, {name}!",
+    "Out with the old, in with the new — Happy New Year, {name}!",
+    "Raise a glass to fresh beginnings, {name}!",
+    "Wishing you 365 days of adventure and success, {name}!",
+    "Sparkles, confetti, and New Year wishes to you, {name}!",
+];
+
+const FEB_GREETINGS: &[&str] = &[
+    "Happy Valentine's Day, {name}!",
+    "Sending you sweet Valentine's wishes and chocolates, {name}!",
+    "Roses are red, violets are blue — Happy Valentine's Day, {name}!",
+    "You're sweeter than a box of truffles, {name}!",
+    "Spreading love, kindness, and Valentine cheer to you, {name}!",
+    "Cupid called — have a wonderful Valentine's Day, {name}!",
+];
+
+const MAR_GREETINGS: &[&str] = &[
+    "Happy St. Patrick's Day, {name}!",
+    "May the luck of the Irish be with you today, {name}!",
+    "Top o' the morning and Happy St. Paddy's Day, {name}!",
+    "Wishing you four-leaf clovers and a pot of gold, {name}!",
+    "Sláinte and shamrock cheers to you, {name}!",
+    "May your pockets be heavy and your heart be light, {name}!",
+];
+
+const APR_GREETINGS: &[&str] = &[
+    "Happy Earth Day, {name}!",
+    "Keep calm and love our planet — Happy Earth Day, {name}!",
+    "Wishing you blooming spring skies and green trails, {name}!",
+    "Let's nurture nature together this Earth Day, {name}!",
+    "Every day is Earth Day when you're around, {name}!",
+    "Plant a seed and watch the spring blossoms grow, {name}!",
+];
+
+const MAY_GREETINGS: &[&str] = &[
+    "Happy Memorial Day, {name}!",
+    "Honoring heroes and welcoming warm sunshine, {name}!",
+    "Wishing you a peaceful and reflective Memorial Day, {name}!",
+    "Fire up the grill and enjoy the Memorial Day breeze, {name}!",
+    "Here's to remembrance, gratitude, and bright May skies, {name}!",
+    "Saluting those who served — have a meaningful Memorial Day, {name}!",
+];
+
+const JUN_GREETINGS: &[&str] = &[
+    "Happy Juneteenth, {name}!",
+    "Celebrating freedom, community, and joy with you, {name}!",
+    "Wishing you a vibrant and inspiring Juneteenth, {name}!",
+    "Honor the past and celebrate the future — Happy Juneteenth, {name}!",
+    "Lift every voice — warm Juneteenth greetings to you, {name}!",
+    "Sunshine, Jubilee, and Juneteenth blessings to you, {name}!",
+];
+
+const JUL_GREETINGS: &[&str] = &[
+    "Happy 4th of July, {name}!",
+    "Sparklers, fireworks, and summer fun to you, {name}!",
+    "Have a star-spangled Independence Day, {name}!",
+    "Cue the fireworks — Happy Fourth of July, {name}!",
+    "Wishing you backyard barbecues and dazzling night skies, {name}!",
+    "Red, white, and booming — enjoy the 4th of July, {name}!",
+];
+
+const AUG_GREETINGS: &[&str] = &[
+    "Happy Friendship Day, {name}!",
+    "Cheers to great friends and golden summer days, {name}!",
+    "Life is better with friends like you — Happy Friendship Day, {name}!",
+    "Sending a high-five and warm August sunshine to you, {name}!",
+    "Here's to laughter, loyalty, and lifelong friendship, {name}!",
+    "Thankful for your friendship today and every day, {name}!",
+];
+
+const SEP_GREETINGS: &[&str] = &[
+    "Happy Labor Day, {name}!",
+    "Kick back and relax — you've earned this Labor Day break, {name}!",
+    "Cheers to hard work and a well-deserved rest, {name}!",
+    "Wishing you crisp autumn breezes and a restful Labor Day, {name}!",
+    "Put your feet up and enjoy the holiday, {name}!",
+    "Here's to the makers, builders, and dreamers — Happy Labor Day, {name}!",
+];
+
+const OCT_GREETINGS: &[&str] = &[
+    "Happy Halloween, {name}!",
+    "Trick or treat — hope your Halloween is spooky and sweet, {name}!",
+    "Boo! Wishing you a fang-tastic Halloween, {name}!",
+    "Double, double, toil and trouble — Happy Halloween, {name}!",
+    "Light the jack-o'-lantern and pass the candy corn, {name}!",
+    "Have a gourd-geous and delightfully spooky Halloween, {name}!",
+];
+
+const NOV_GREETINGS: &[&str] = &[
+    "Happy Thanksgiving, {name}!",
+    "Gobble gobble, {name} — Happy Turkey Day!",
+    "Warm autumn wishes and a thankful heart to you, {name}!",
+    "Pass the stuffing and cranberry sauce, {name}!",
+    "Feast mode activated — Happy Thanksgiving, {name}!",
+    "Wishing you a harvest of gratitude and pumpkin pie, {name}!",
+];
+
+const DEC_GREETINGS: &[&str] = &[
+    "Happy Hanukkah, {name}!",
+    "Chag Hanukkah Sameach, {name}!",
+    "Wishing you eight nights of light, warmth, and joy, {name}!",
+    "Spin the dreidel and pass the crispy latkes, {name}!",
+    "Happy Festival of Lights, {name}!",
+    "May your menorah shine bright this Hanukkah, {name}!",
+];
+
 /// Metadata and calculations for a month's featured holiday.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct HolidayInfo {
     pub month_name: &'static str,
     pub holiday_name: &'static str,
     pub greeting_prefix: &'static str,
+    pub greetings: &'static [&'static str],
     pub emoji: &'static str,
     pub vibe: &'static str,
     pub start_day: u32,
@@ -110,6 +221,7 @@ pub fn holiday_for_month(year: i32, month: u32) -> HolidayInfo {
             month_name: "January",
             holiday_name: "New Year's Day",
             greeting_prefix: "Happy New Year",
+            greetings: JAN_GREETINGS,
             emoji: "🎆🥂",
             vibe: "Fresh starts and sparkling resolutions!",
             start_day: 1,
@@ -121,6 +233,7 @@ pub fn holiday_for_month(year: i32, month: u32) -> HolidayInfo {
             month_name: "February",
             holiday_name: "Valentine's Day",
             greeting_prefix: "Happy Valentine's Day",
+            greetings: FEB_GREETINGS,
             emoji: "💘🍫",
             vibe: "Love, friendship, and sweet treats in the air!",
             start_day: 14,
@@ -132,6 +245,7 @@ pub fn holiday_for_month(year: i32, month: u32) -> HolidayInfo {
             month_name: "March",
             holiday_name: "St. Patrick's Day",
             greeting_prefix: "Happy St. Patrick's Day",
+            greetings: MAR_GREETINGS,
             emoji: "☘️🌈",
             vibe: "Shamrocks, emerald green, and a bit of luck!",
             start_day: 17,
@@ -143,6 +257,7 @@ pub fn holiday_for_month(year: i32, month: u32) -> HolidayInfo {
             month_name: "April",
             holiday_name: "Earth Day",
             greeting_prefix: "Happy Earth Day",
+            greetings: APR_GREETINGS,
             emoji: "🌍🌱",
             vibe: "Spring blossoms and appreciation for our planet!",
             start_day: 22,
@@ -154,6 +269,7 @@ pub fn holiday_for_month(year: i32, month: u32) -> HolidayInfo {
             month_name: "May",
             holiday_name: "Memorial Day",
             greeting_prefix: "Happy Memorial Day",
+            greetings: MAY_GREETINGS,
             emoji: "🌺☀️",
             vibe: "Late spring sunshine, remembrance, and backyard cookouts!",
             start_day: last_weekday_of_31_day_month(year, 5, 1),
@@ -165,6 +281,7 @@ pub fn holiday_for_month(year: i32, month: u32) -> HolidayInfo {
             month_name: "June",
             holiday_name: "Juneteenth",
             greeting_prefix: "Happy Juneteenth",
+            greetings: JUN_GREETINGS,
             emoji: "🌻🎉",
             vibe: "Long sunny days, freedom celebrations, and community gatherings!",
             start_day: 19,
@@ -176,6 +293,7 @@ pub fn holiday_for_month(year: i32, month: u32) -> HolidayInfo {
             month_name: "July",
             holiday_name: "Independence Day",
             greeting_prefix: "Happy 4th of July",
+            greetings: JUL_GREETINGS,
             emoji: "🎇🗽",
             vibe: "Summer fireworks, parades, and starlit picnics!",
             start_day: 4,
@@ -187,6 +305,7 @@ pub fn holiday_for_month(year: i32, month: u32) -> HolidayInfo {
             month_name: "August",
             holiday_name: "Friendship Day",
             greeting_prefix: "Happy Friendship Day",
+            greetings: AUG_GREETINGS,
             emoji: "🏖️🤝",
             vibe: "Golden late-summer days and celebrating good friends!",
             start_day: nth_weekday_of_month(year, 8, 0, 1),
@@ -198,6 +317,7 @@ pub fn holiday_for_month(year: i32, month: u32) -> HolidayInfo {
             month_name: "September",
             holiday_name: "Labor Day",
             greeting_prefix: "Happy Labor Day",
+            greetings: SEP_GREETINGS,
             emoji: "🍎🛠️",
             vibe: "Crisp early-autumn breezes and celebrating hard work!",
             start_day: nth_weekday_of_month(year, 9, 1, 1),
@@ -209,6 +329,7 @@ pub fn holiday_for_month(year: i32, month: u32) -> HolidayInfo {
             month_name: "October",
             holiday_name: "Halloween",
             greeting_prefix: "Happy Halloween",
+            greetings: OCT_GREETINGS,
             emoji: "🎃👻",
             vibe: "Spooky lanterns, rustling leaves, and candy corn!",
             start_day: 31,
@@ -220,6 +341,7 @@ pub fn holiday_for_month(year: i32, month: u32) -> HolidayInfo {
             month_name: "November",
             holiday_name: "Thanksgiving",
             greeting_prefix: "Happy Thanksgiving",
+            greetings: NOV_GREETINGS,
             emoji: "🍁🍂",
             vibe: "Cozy autumn vibes detected.",
             start_day: thanksgiving_day_of_november(year),
@@ -231,6 +353,7 @@ pub fn holiday_for_month(year: i32, month: u32) -> HolidayInfo {
             month_name: "December",
             holiday_name: "Hanukkah",
             greeting_prefix: "Happy Hanukkah",
+            greetings: DEC_GREETINGS,
             emoji: "🕎✨",
             vibe: "Warm candlelight, spinning dreidels, and the Festival of Lights!",
             start_day: hanukkah_start_day_in_december(year),
@@ -354,14 +477,27 @@ pub fn dish_of_the_day(day: u32) -> &'static str {
     dish_of_the_day_for_month(11, day)
 }
 
+/// Helper to build dynamic speech bubble lines around a greeting of any length.
+fn bubble_parts(greeting: &str, min_inner_width: usize) -> (String, String, String, String) {
+    let char_len = greeting.chars().count();
+    let inner_width = char_len.max(min_inner_width);
+    let pad = inner_width - char_len;
+    let top_bar = "_".repeat(inner_width + 2);
+    let empty_row = " ".repeat(inner_width + 2);
+    let padded_greeting = format!("{greeting}{}", " ".repeat(pad));
+    let bottom_bar = "_".repeat(inner_width + 2);
+    (top_bar, empty_row, padded_greeting, bottom_bar)
+}
+
 /// Returns ASCII art of a festive Thanksgiving turkey.
 pub fn ascii_turkey(greeting: &str) -> String {
+    let (top_bar, empty_row, padded, bottom_bar) = bubble_parts(greeting, 28);
     format!(
         r#"   .--.
-  / ,. \   🍂  ______________________________
- | (  ) |     /                              \
-  \ `' /  .__|  {greeting:<28} |
-   `--' .`    \______________________________/
+  / ,. \   🍂  {top_bar}
+ | (  ) |     /{empty_row}\
+  \ `' /  .__|  {padded} |
+   `--' .`    \{bottom_bar}/
    /  \/  \  _.-.
   |   ||   |/    \   /\  /\
   |   ||   |      | /  \/  \
@@ -375,12 +511,13 @@ pub fn ascii_turkey(greeting: &str) -> String {
 
 /// Returns ASCII art of a festive Hanukkah Menorah (Chanukiah).
 pub fn ascii_menorah(greeting: &str) -> String {
+    let (top_bar, empty_row, padded, bottom_bar) = bubble_parts(greeting, 34);
     format!(
         r#"           🕯️
-     🕯️ 🕯️ 🕯️ 🕯️ || 🕯️ 🕯️ 🕯️ 🕯️   ✨  ____________________________________
-     || || || || || || || || ||     /                                    \
-     \  \  \  \  ||  /  /  /  /  __|  {greeting:<34} |
-      \  \  \  \ || /  /  /  /     \____________________________________/
+     🕯️ 🕯️ 🕯️ 🕯️ || 🕯️ 🕯️ 🕯️ 🕯️   ✨  {top_bar}
+     || || || || || || || || ||     /{empty_row}\
+     \  \  \  \  ||  /  /  /  /  __|  {padded} |
+      \  \  \  \ || /  /  /  /     \{bottom_bar}/
        '--.____.\||/.____.--'
                  ||
                 _||_
@@ -390,11 +527,12 @@ pub fn ascii_menorah(greeting: &str) -> String {
 
 /// Returns ASCII art of New Year's fireworks and toast.
 pub fn ascii_new_years(greeting: &str) -> String {
+    let (top_bar, empty_row, padded, bottom_bar) = bubble_parts(greeting, 34);
     format!(
-        r#"      .* *.               🎆  ____________________________________
-    *  \ /  *   .* *.        /                                    \
-   * -- * -- * *  *  *    __|  {greeting:<34} |
-    *  / \  *   '* *'       \____________________________________/
+        r#"      .* *.               🎆  {top_bar}
+    *  \ /  *   .* *.        /{empty_row}\
+   * -- * -- * *  *  *    __|  {padded} |
+    *  / \  *   '* *'       \{bottom_bar}/
       '* *'       |
         |      \~/ \~/
        _|_      |   |   🥂 Cheers to the New Year!"#
@@ -409,12 +547,13 @@ pub fn ascii_seasonal(month: u32, greeting: &str) -> String {
         1 => ascii_new_years(greeting),
         _ => {
             let info = holiday_for_month(2026, month);
+            let (top_bar, empty_row, padded, bottom_bar) = bubble_parts(greeting, 34);
             format!(
                 r#"   .~~~~.
-  /      \  {}  ____________________________________
- |  ^  ^  |    /                                    \
- |  \__/  | __|  {greeting:<34} |
-  \      /     \____________________________________/
+  /      \  {}  {top_bar}
+ |  ^  ^  |    /{empty_row}\
+ |  \__/  | __|  {padded} |
+  \      /     \{bottom_bar}/
    `----'   {}Celebrating {}!"#,
                 info.emoji, info.emoji, info.holiday_name
             )
@@ -422,15 +561,53 @@ pub fn ascii_seasonal(month: u32, greeting: &str) -> String {
     }
 }
 
-/// Formats a seasonal greeting message for the given target name and month (1..=12).
-pub fn seasonal_greet(name: &str, month: u32) -> String {
-    let trimmed = name.trim();
-    let target = if trimmed.is_empty() { "world" } else { trimmed };
-    let info = holiday_for_month(2026, month);
-    format!("{}, {target}!", info.greeting_prefix)
+/// Generates a random `usize` using high-resolution system time, process ID, stack ASLR,
+/// and an atomic counter mixed via SplitMix64.
+pub fn random_index(len: usize) -> usize {
+    if len <= 1 {
+        return 0;
+    }
+    static COUNTER: AtomicU64 = AtomicU64::new(0);
+    let seq = COUNTER.fetch_add(1, Ordering::Relaxed);
+    let nanos = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|d| d.as_nanos() as u64)
+        .unwrap_or(0);
+    let pid = std::process::id() as u64;
+    let stack_addr = (&nanos as *const u64 as usize) as u64;
+
+    let mut z = nanos
+        .wrapping_add(pid.rotate_left(17))
+        .wrapping_add(stack_addr.rotate_right(11))
+        .wrapping_add(seq.wrapping_mul(0x9E37_79B9_7F4A_7C15));
+    z = (z ^ (z >> 30)).wrapping_mul(0xBF58_476D_1CE4_E5B9);
+    z = (z ^ (z >> 27)).wrapping_mul(0x94D0_49BB_1331_11EB);
+    z = z ^ (z >> 31);
+    (z as usize) % len
 }
 
-/// Formats a greeting message for the given target name using the current month's seasonal greeting.
+/// Returns the slice of specialized greeting templates for a given month (1..=12).
+pub fn greetings_for_month(month: u32) -> &'static [&'static str] {
+    holiday_for_month(2026, month).greetings
+}
+
+/// Formats a specific specialized greeting (selected by `index`) for the given target name and month (1..=12).
+pub fn seasonal_greet_with_index(name: &str, month: u32, index: usize) -> String {
+    let trimmed = name.trim();
+    let target = if trimmed.is_empty() { "world" } else { trimmed };
+    let templates = greetings_for_month(month);
+    let template = templates[index % templates.len()];
+    template.replace("{name}", target)
+}
+
+/// Randomly picks and formats one of the specialized greetings for the given target name and month (1..=12).
+pub fn seasonal_greet(name: &str, month: u32) -> String {
+    let templates = greetings_for_month(month);
+    let idx = random_index(templates.len());
+    seasonal_greet_with_index(name, month, idx)
+}
+
+/// Formats a random seasonal greeting message for the given target name using the current month.
 pub fn greet(name: &str) -> String {
     seasonal_greet(name, current_date().month)
 }
@@ -507,7 +684,7 @@ fn current_date() -> SimpleDate {
 fn print_usage(program: &str) {
     println!("Usage: {program} [OPTIONS] [NAME...]");
     println!();
-    println!("Prints a seasonal holiday greeting tailored to every month of the year!");
+    println!("Prints a randomly chosen specialized holiday greeting tailored to every month of the year!");
     println!();
     println!("Options:");
     println!("  -h, --help              Show this help message");
@@ -585,43 +762,80 @@ mod tests {
     #[test]
     fn seasonal_greets_thanksgiving_in_november() {
         assert_eq!(
-            seasonal_greet("world", 11),
+            seasonal_greet_with_index("world", 11, 0),
             "Happy Thanksgiving, world!"
         );
+        let random_nov = seasonal_greet("world", 11);
+        let expected_nov: Vec<String> = greetings_for_month(11)
+            .iter()
+            .map(|t| t.replace("{name}", "world"))
+            .collect();
+        assert!(expected_nov.contains(&random_nov));
     }
 
     #[test]
     fn seasonal_greets_hanukkah_in_december() {
         assert_eq!(
-            seasonal_greet("Hannah", 12),
+            seasonal_greet_with_index("Hannah", 12, 0),
             "Happy Hanukkah, Hannah!"
         );
+        let random_dec = seasonal_greet("Hannah", 12);
+        let expected_dec: Vec<String> = greetings_for_month(12)
+            .iter()
+            .map(|t| t.replace("{name}", "Hannah"))
+            .collect();
+        assert!(expected_dec.contains(&random_dec));
     }
 
     #[test]
     fn seasonal_greets_new_year_in_january() {
         assert_eq!(
-            seasonal_greet("Rust", 1),
+            seasonal_greet_with_index("Rust", 1, 0),
             "Happy New Year, Rust!"
         );
+        let random_jan = seasonal_greet("Rust", 1);
+        let expected_jan: Vec<String> = greetings_for_month(1)
+            .iter()
+            .map(|t| t.replace("{name}", "Rust"))
+            .collect();
+        assert!(expected_jan.contains(&random_jan));
     }
 
     #[test]
     fn falls_back_on_empty_input() {
-        assert_eq!(
-            seasonal_greet("   ", 11),
-            "Happy Thanksgiving, world!"
-        );
+        let g = seasonal_greet("   ", 11);
+        assert!(g.contains("world"));
     }
 
     #[test]
-    fn supports_all_twelve_months() {
+    fn each_holiday_has_multiple_specialized_greetings_and_random_picks_multiple() {
         for month in 1..=12 {
             let info = holiday_for_month(2026, month);
             assert!(!info.holiday_name.is_empty());
-            let greeting = seasonal_greet("friend", month);
-            assert!(greeting.starts_with("Happy "));
-            assert!(greeting.ends_with(", friend!"));
+            assert!(
+                info.greetings.len() >= 5,
+                "Month {month} should have at least 5 specialized greetings"
+            );
+
+            let valid_for_month: Vec<String> = info
+                .greetings
+                .iter()
+                .map(|t| t.replace("{name}", "friend"))
+                .collect();
+
+            let mut seen = std::collections::HashSet::new();
+            for _ in 0..30 {
+                let g = seasonal_greet("friend", month);
+                assert!(
+                    valid_for_month.contains(&g),
+                    "Generated greeting '{g}' must belong to month {month}"
+                );
+                seen.insert(g);
+            }
+            assert!(
+                seen.len() > 1,
+                "Random selection for month {month} should pick across multiple greetings"
+            );
         }
     }
 

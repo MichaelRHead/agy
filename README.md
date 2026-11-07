@@ -4,22 +4,22 @@ A lightweight command-line greeting utility written in Rust (2024 edition) with 
 
 ## Overview
 
-`hello` prints a festive, seasonal greeting to standard output tailored to the current month (or any custom date/month you choose):
-- Running `hello` with no arguments greets `world` with the current month's holiday greeting (e.g., `Happy Thanksgiving, world!` in November, `Happy Hanukkah, world!` in December, `Happy New Year, world!` in January).
-- Passing one or more arguments greets the specified name (e.g., `hello Antigravity` outputs `Happy Thanksgiving, Antigravity!`).
-- **Year-Round Monthly Holiday Support**:
-  - **January** — **New Year's Day** (`Happy New Year, <name>!`) with fireworks & champagne toast ASCII art 🎆🥂
-  - **February** — **Valentine's Day** (`Happy Valentine's Day, <name>!`) 💘🍫
-  - **March** — **St. Patrick's Day** (`Happy St. Patrick's Day, <name>!`) ☘️🌈
-  - **April** — **Earth Day** (`Happy Earth Day, <name>!`) 🌍🌱
-  - **May** — **Memorial Day** (`Happy Memorial Day, <name>!`, calculated as the last Monday of May) 🌺☀️
-  - **June** — **Juneteenth** (`Happy Juneteenth, <name>!`) 🌻🎉
-  - **July** — **Independence Day** (`Happy 4th of July, <name>!`) 🎇🗽
-  - **August** — **Friendship Day** (`Happy Friendship Day, <name>!`, calculated as the 1st Sunday of August) 🏖️🤝
-  - **September** — **Labor Day** (`Happy Labor Day, <name>!`, calculated as the 1st Monday of September) 🍎🛠️
-  - **October** — **Halloween** (`Happy Halloween, <name>!`) 🎃👻
-  - **November** — **Thanksgiving** (`Happy Thanksgiving, <name>!`, calculated as the 4th Thursday of November) with an ASCII art turkey 🦃🍂
-  - **December** — **Hanukkah** (`Happy Hanukkah, <name>!`, 8-day Festival of Lights celebration) with an ASCII art Menorah 🕎✨
+`hello` prints a festive, seasonal greeting to standard output tailored to the current month (or any custom date/month you choose), randomly picking from a curated set of 6 specialized greetings for that month's holiday on every run:
+- Running `hello` with no arguments greets `world` with a randomly chosen specialized greeting for the current month's holiday (e.g., `"Gobble gobble, world — Happy Turkey Day!"` or `"Happy Thanksgiving, world!"` in November).
+- Passing one or more arguments greets the specified name (e.g., `hello Antigravity`).
+- **Year-Round Monthly Holiday Support (6 Specialized Greetings Each)**:
+  - **January** — **New Year's Day** (e.g., `Happy New Year, <name>!`, `Raise a glass to fresh beginnings, <name>!`) with fireworks & champagne toast ASCII art 🎆🥂
+  - **February** — **Valentine's Day** (e.g., `Happy Valentine's Day, <name>!`, `You're sweeter than a box of truffles, <name>!`) 💘🍫
+  - **March** — **St. Patrick's Day** (e.g., `Happy St. Patrick's Day, <name>!`, `May the luck of the Irish be with you today, <name>!`) ☘️🌈
+  - **April** — **Earth Day** (e.g., `Happy Earth Day, <name>!`, `Keep calm and love our planet — Happy Earth Day, <name>!`) 🌍🌱
+  - **May** — **Memorial Day** (e.g., `Happy Memorial Day, <name>!`, calculated as the last Monday of May) 🌺☀️
+  - **June** — **Juneteenth** (e.g., `Happy Juneteenth, <name>!`, `Celebrating freedom, community, and joy with you, <name>!`) 🌻🎉
+  - **July** — **Independence Day** (e.g., `Happy 4th of July, <name>!`, `Have a star-spangled Independence Day, <name>!`) 🎇🗽
+  - **August** — **Friendship Day** (e.g., `Happy Friendship Day, <name>!`, calculated as the 1st Sunday of August) 🏖️🤝
+  - **September** — **Labor Day** (e.g., `Happy Labor Day, <name>!`, calculated as the 1st Monday of September) 🍎🛠️
+  - **October** — **Halloween** (e.g., `Happy Halloween, <name>!`, `Trick or treat — hope your Halloween is spooky and sweet, <name>!`) 🎃👻
+  - **November** — **Thanksgiving** (e.g., `Happy Thanksgiving, <name>!`, `Pass the stuffing and cranberry sauce, <name>!`, calculated as the 4th Thursday of November) with an ASCII art turkey 🦃🍂
+  - **December** — **Hanukkah** (e.g., `Happy Hanukkah, <name>!`, `Chag Hanukkah Sameach, <name>!`, `Spin the dreidel and pass the crispy latkes, <name>!`, 8-day Festival of Lights celebration) with an ASCII art Menorah 🕎✨
 - Displays a live countdown to the month's holiday, a celebration banner on the holiday (including multi-day tracking for the 8 days of Hanukkah), or a post-holiday message afterward, plus a rotating **Featured Holiday Treat of the Day**.
 - Supports `-m` / `--month MONTH`, `--date YYYY-MM-DD`, `-t` / `--turkey`, `-f` / `--feast`, and `-h` / `--help`.
 
